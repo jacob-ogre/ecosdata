@@ -1,17 +1,18 @@
 {
     "collab_server" : "",
-    "contents" : "# ecosdata\n\nAn R project for scraping data from ECOS.\n\n## Purpose\n\nThe U.S. Fish and Wildlife Service (FWS) maintains the\n[ECOS website](http://ecos.fws.gov) as a resource for information and documents\nabout species listed under the Endangered Species Act (ESA). While useful in \nsome ways, there is much more that can be done with all of the data that is \nprovided by ECOS. This R project contains a set of scripts to scrape data and\ndocuments from ECOS, regularly check for data and document updates, and manage\nthe data.\n\n## Questions\n\nHave questions about these scripts? Want to contribute? Submit \n[an issue here](https://github.com/jacob-ogre/ecosdata) or \n[get in touch](mailto:esa@defenders.org).\n\n## License\n\nThis project is licensed under a BSD 2-clause open source license. See the \nLICENSE file in the repo.\n",
+    "contents" : "# ecosdata\n\nAn R project for scraping endangered species documents and data from ECOS.\n\n## Purpose\n\nThe U.S. Fish and Wildlife Service (FWS) maintains the\n[ECOS website](http://ecos.fws.gov) as a resource for information and documents\nabout species listed under the Endangered Species Act (ESA). While useful in \nsome ways, there is much more that can be done with all of the data that is \nprovided by ECOS. This R project contains a set of scripts to scrape data and\ndocuments from ECOS, regularly check for data and document updates, and manage\nthe data.\n\n## Questions\n\nHave questions about these scripts? Want to contribute? Submit \n[an issue here](https://github.com/jacob-ogre/ecosdata) or \n[get in touch](mailto:esa@defenders.org).\n\n## License\n\nThis project is licensed under a BSD 2-clause open source license. See the \nLICENSE file in the repo.\n",
     "created" : 1480592234438.000,
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "4129178860",
+    "hash" : "2933349514",
     "id" : "A0868079",
-    "lastKnownWriteTime" : 1480592803,
-    "last_content_update" : 1480592803690,
+    "lastKnownWriteTime" : 1480593039,
+    "last_content_update" : 1480593039538,
     "path" : "~/Work/Repos/Defenders/analyses/ecosdata/README.md",
     "project_path" : "README.md",
     "properties" : {
+        "marks" : "<:2,0\n>:2,0",
         "tempName" : "Untitled2"
     },
     "relative_order" : 2,

@@ -1,6 +1,6 @@
 # ecosdata
 
-An R project for scraping data from ECOS.
+An R project for scraping endangered species documents and data from ECOS.
 
 ## Purpose
 
