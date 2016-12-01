@@ -1,0 +1,25 @@
+Package: ecosdata
+Type: Package
+Title: Scrape the ECOS Website, http://ecos.fws.gov
+Version: 0.1.0
+Authors@R: person("Jacob", "Malcom", email = "jmalcom@defenders.org",
+                  role = c("aut", "cre"))
+Maintainer: Jacob Malcom <jmalcom@defenders.org>
+Description: An 'analysis package' for scraping data and documents from the 
+    FWS's ECOS website and keeping our repositories up-to-date.
+License: BSD_2_clause + file LICENSE
+Depends: R (>= 2.10)
+LazyData: TRUE
+RoxygenNote: 5.0.1
+Imports:
+    digest,
+    dplyr,
+    httr,
+    rvest,
+    stringr,
+    xml2
+Suggests: knitr,
+    rmarkdown
+Remotes:
+    jacob-ogre/ecosscraper
+VignetteBuilder: knitr

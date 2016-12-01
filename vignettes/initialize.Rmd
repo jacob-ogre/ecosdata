@@ -1,0 +1,52 @@
+---
+title: "Initialize ECOS archive"
+author: "Jacob Malcom, Defenders of Wildlife"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    theme: yeti
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(ecosdata)
+library(ecosscraper)
+library(knitr)
+```
+
+# Get Base dfs
+
+## TECP_table
+
+Before initializing the run across all T & E species, we need to get up-to-date
+data from the main table of ECOS:
+
+```{r TECP}
+TECP_init <- get_TECP_baseline()
+TECP_table <- TECP_init$TECP_table
+TECP_summary <- TECP_init$TECP_summary
+kable(head(TECP_table))
+```
+
+At this initial scrape, it is interesting to see one Hawaiian species' common
+name, which features backticks, gets turned to "code" (_Abutilon menziesii_). 
+We will keep the summary df of the TECP_table for joining with the per-species 
+page scrape summary data, to be saved later.
+
+## Filter species
+
+By default, `get_TECP_table` records foreign + domestic and T & E + candidates /
+proposed. But we're primarily interested in domestic T & E only, so we filter:
+
+```{r domestic}
+dom <- filter_listed(TECP_table) %>% filter_domestic()
+kable(head(dom))
+```
+
+# Initialize scraping
+
+
+

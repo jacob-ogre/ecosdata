@@ -12,10 +12,15 @@ provided by ECOS. This R project contains a set of scripts to scrape data and
 documents from ECOS, regularly check for data and document updates, and manage
 the data.
 
+This is an "analysis package," i.e., an R package focused on analysis with the 
+.Rmd vignettes as analysis scripts. The advantages (from our POV) of creating an
+analysis package rather than plain R scripts are (a) familiar file structure and
+(b) ease of documentation. 
+
 ## Questions
 
 Have questions about these scripts? Want to contribute? Submit 
-[an issue here](https://github.com/jacob-ogre/ecosdata) or 
+[an issue here](https://github.com/jacob-ogre/ecosdata/issues) or 
 [get in touch](mailto:esa@defenders.org).
 
 ## License
