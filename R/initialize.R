@@ -11,7 +11,7 @@
 #' @export
 get_TECP_baseline <- function() {
   TECP_table <- get_TECP_table()
-  TECP_table_MD5 <- digest(TECP_table)
+  TECP_table_MD5 <- digest(arrange(TECP_table, Scientific_Name))
   TECP_summary <- data.frame(Species = NA,
                              Page = options()$TE_list,
                              Scrape_Date = Sys.Date(),
@@ -35,6 +35,6 @@ get_TECP_baseline <- function() {
 get_species_baseline <- function(urls, species, pause = FALSE) {
   if(length(pause) == 1) pause <- rep(pause, length(urls))
   args <- list(urls, species, pause)
-  sp_base <- pmap(args, get_species_page_summary)
+  sp_base <- pmap(args, get_species_page_summary_)
   return(sp_base)
 }

@@ -16,6 +16,7 @@ Imports:
     dplyr,
     httr,
     rvest,
+    purrr,
     stringr,
     xml2
 Suggests: knitr,

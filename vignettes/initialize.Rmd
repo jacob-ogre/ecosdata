@@ -46,7 +46,26 @@ dom <- filter_listed(TECP_table) %>% filter_domestic()
 kable(head(dom))
 ```
 
-# Initialize scraping
+# Species' Pages
 
+Now we can get baseline data on every species' ECOS page.
 
+```{r scrape_species}
+sp_base <- get_species_baseline(dom$Species_Page[1:3], 
+                                dom$Scientific_Name[1:3], 
+                                FALSE)
+sp_summary <- bind_rows(sp_base)
+kable(head(sp_summary))
+```
 
+# Save .rdas
+
+Last, for now, we will combine the data and save it as `.rda`:
+
+```{r save_data}
+TECP_summary$Type <- "TECP_table"
+sp_summary$Type <- rep("species_page", length(sp_summary$Species))
+ECOS_summary <- rbind(TECP_summary, sp_summary)
+kable(head(ECOS_summary))
+save(ECOS_summary, file = "../data/ECOS_summary.rda")
+```
