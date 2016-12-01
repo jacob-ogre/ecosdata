@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "# ecosdata\n\nAn R project for scraping data from ECOS.\n\n## Purpose\n\nThe U.S. Fish and Wildlife Service (FWS) maintains the\n[ECOS website](http://ecos.fws.gov) as a resource for information and documents\nabout species listed under the Endangered Species Act (ESA). While useful in \nsome ways, there is much more that can be done with all of the data that is \nprovided by ECOS. This R project contains a set of scripts to scrape data and\ndocuments from ECOS, regularly check for data and document updates, and manage\nthe data.\n\n## Questions\n\nHave questions about these scripts? Want to contribute? Submit \n[an issue here](https://github.com/jacob-ogre/ecosdata) or \n[get in touch](mailto:esa@defenders.org).\n\n## License\n\nThis project is licensed under a BSD 2-clause open source license. See the \nLICENSE file in the repo.\n",
+    "created" : 1480592234438.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4129178860",
+    "id" : "A0868079",
+    "lastKnownWriteTime" : 1480592803,
+    "last_content_update" : 1480592803690,
+    "path" : "~/Work/Repos/Defenders/analyses/ecosdata/README.md",
+    "project_path" : "README.md",
+    "properties" : {
+        "tempName" : "Untitled2"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "markdown"
+}
