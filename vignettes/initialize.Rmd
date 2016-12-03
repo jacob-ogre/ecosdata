@@ -96,31 +96,40 @@ we need to try getting them again, and integrating the results into the main
 data_frame.
 
 ```{r revisit}
-load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
-NAs <- dplyr::filter(ECOS_dl_data, is.na(ECOS_dl_data$File))
-success <- dplyr::filter(ECOS_dl_data, !is.na(ECOS_dl_data$File))
-
-retry <- lapply(NAs$Page, GET_page)
-miss <- rep("", length(retry))
-for(i in 1:length(retry)) {
-  cur_dat <- dplyr::filter(dom, Species_Page == NAs$Page[i])
-  fname <- paste0("/datadrive/data/ECOS/html/", 
-                  cur_dat$Species_Code, "_", Sys.Date(), ".html")
-  if(!is.null(retry[[i]]) & !is.na(retry[[i]])) {
-    writeLines(retry[[i]], con = fname)
-    miss[i] <- fname 
-  } else {
-    warning(paste("Problem with URL:", cur_dat$Species_Page))
-    miss[i] <- NA
-  }
-}
-
-redux <- data_frame(Page = NAs$Species_Page,
-                    File = miss,
-                    Date_DL = Sys.Date())
-ECOS_dl_data <- rbind(success, redux)
-dim(ECOS_dl_data)
-sum(is.na(ECOS_dl_data$File))
+# load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
+# NAs <- dplyr::filter(ECOS_dl_data, is.na(ECOS_dl_data$File))
+# success <- dplyr::filter(ECOS_dl_data, !is.na(ECOS_dl_data$File))
+# 
+# print("Made it past success")
+# 
+# retry <- lapply(NAs$Page, GET_page)
+# miss <- rep("", length(retry))
+# for(i in 1:length(retry)) {
+#   cur_dat <- dplyr::filter(dom, Species_Page == NAs$Page[i])
+#   fname <- paste0("/datadrive/data/ECOS/html/", 
+#                   cur_dat$Species_Code, "_", Sys.Date(), ".html")
+#   if(!is.null(retry[[i]]) & !is.na(retry[[i]])) {
+#     writeLines(retry[[i]], con = fname)
+#     miss[i] <- fname 
+#   } else {
+#     warning(paste("Problem with URL:", cur_dat$Species_Page))
+#     miss[i] <- NA
+#   }
+# }
+# 
+# redux <- data_frame(Page = NAs$Page,
+#                     File = miss,
+#                     Date_DL = Sys.Date())
+# 
+# md5s <- mclapply(redux$File, 
+#                  species_page_md5,
+#                  mc.cores = NCORE,
+#                  mc.preschedule = FALSE)
+# redux$MD5 <- unlist(md5s)
+# 
+# ECOS_dl_data <- rbind(success, redux)
+# dim(ECOS_dl_data)
+# sum(is.na(ECOS_dl_data$File))
 ```
 
 Oh, the possibilities! For example, we could create a parallel ECOS that 
@@ -136,6 +145,9 @@ First, we need the MD5 hash of the page content, which will be used to determine
 if pages have changed since the last scrape.
 
 ```{r md5_hash}
+if(!exists("ECOS_dl_data.rda")) {
+  load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
+}
 md5s <- mclapply(ECOS_dl_data$File, 
                  species_page_md5,
                  mc.cores = NCORE,
@@ -151,7 +163,24 @@ that information but also to check whether any changes detected from the hashing
 are 'substantive' changes.
 
 ```{r get_links}
+htmls <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
+sp_links <- mclapply(htmls, 
+                     get_species_links,
+                     mc.cores = 3,
+                     mc.preschedule = FALSE)
+ECOS_species_links <- bind_rows(sp_links)
+kable(head(ECOS_species_links, 10))
+```
 
+That gives us `r length(ECOS_species_links[[1]])` URLs that may be of use. Just 
+out of curiosity, how many are links to images?
+
+```{r img_links}
+img <- filter(ECOS_species_links,
+              grepl(ECOS_species_links$link,
+                    pattern = "jpg$|JPG$|gif$|png$"))
+dim(img)
+head(img)
 ```
 
 ## Page tables
