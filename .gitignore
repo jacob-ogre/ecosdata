@@ -2,3 +2,4 @@
 data/*
 inst/doc
 .Rproj.user
+vignettes/*.html
