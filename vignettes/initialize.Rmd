@@ -21,7 +21,7 @@ library(parallel)
 NCORE <- detectCores() - 1
 ```
 
-# Get Base dfs
+# Get Base Data
 
 ## TECP_table
 
@@ -51,7 +51,7 @@ dom_MD5 <- digest(dom)
 kable(head(dom))
 ```
 
-# Species' Pages
+# Get Species' Pages
 
 ## Downloading
 
@@ -59,59 +59,118 @@ Now we can get every species' ECOS page and save them all locally, which will
 facilitate all sorts of processing:
 
 ```{r scrape_species_pages}
-files <- mclapply(dom$Species_Page, 
-                  FUN = GET_page,
-                  pause = TRUE,
-                  mc.cores = NCORE,
-                  mc.preschedule = FALSE)
+########################################################################
+# # Comment out the big scrape for now because most HTML already fetched
+########################################################################
+# files <- mclapply(dom$Species_Page, 
+#                   FUN = GET_page,
+#                   pause = TRUE,
+#                   mc.cores = NCORE,
+#                   mc.preschedule = FALSE)
 
-# Using a loop because it's plenty fast:
-fnames <- rep("", length(files))
-for(i in 1:length(files)) {
+# # Using a loop because it's plenty fast:
+# fnames <- rep("", length(files))
+# for(i in 1:length(files)) {
+#   fname <- paste0("/datadrive/data/ECOS/html/", 
+#                   dom$Species_Code[i], "_", Sys.Date(), ".html")
+#   if(!is.null(files[[i]]) & !is.na(files[[i]])) {
+#     writeLines(files[[i]], con = fname)
+#     fnames[i] <- fname 
+#   } else {
+#     warning(paste("Problem with URL:", dom$Species_Page[i]))
+#     fnames[i] <- NA
+#   }
+# }
+# 
+# ECOS_dl_data <- data_frame(Page = dom$Species_Page,
+#                            File = fnames,
+#                            Date_DL = Sys.Date())
+# dim(ECOS_dl_data)
+# sum(is.na(ECOS_dl_data$File))
+```
+
+## Revisiting pages
+
+A handful of ECOS pages weren't downloaded for some reason on the first pass, so 
+we need to try getting them again, and integrating the results into the main 
+data_frame.
+
+```{r revisit}
+load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
+NAs <- dplyr::filter(ECOS_dl_data, is.na(ECOS_dl_data$File))
+success <- dplyr::filter(ECOS_dl_data, !is.na(ECOS_dl_data$File))
+
+retry <- lapply(NAs$Page, GET_page)
+miss <- rep("", length(retry))
+for(i in 1:length(retry)) {
+  cur_dat <- dplyr::filter(dom, Species_Page == NAs$Page[i])
   fname <- paste0("/datadrive/data/ECOS/html/", 
-                  dom$Species_Code[i], "_", Sys.Date(), ".html")
-  if(!is.null(files[[i]]) & !is.na(files[[i]])) {
-    writeLines(files[[i]], con = fname)
-    fnames[i] <- fname 
+                  cur_dat$Species_Code, "_", Sys.Date(), ".html")
+  if(!is.null(retry[[i]]) & !is.na(retry[[i]])) {
+    writeLines(retry[[i]], con = fname)
+    miss[i] <- fname 
   } else {
-    warning(paste("Problem with URL:", dom$Species_Page[i]))
-    fnames[i] <- NA
+    warning(paste("Problem with URL:", cur_dat$Species_Page))
+    miss[i] <- NA
   }
 }
 
-ECOS_dl_data <- data_frame(Page = dom$Species_Page,
-                           File = fnames,
-                           Date_DL = Sys.Date())
+redux <- data_frame(Page = NAs$Species_Page,
+                    File = miss,
+                    Date_DL = Sys.Date())
+ECOS_dl_data <- rbind(success, redux)
+dim(ECOS_dl_data)
+sum(is.na(ECOS_dl_data$File))
 ```
 
-Oh, the possibilities!
+Oh, the possibilities! For example, we could create a parallel ECOS that 
+includes more information in a better layout than ECOS provides...hmmmm.
 
-## Processing
+# Page Processing
 
-Now that we have local copies, it's time to get out all of the information.
+Now that we have local copies, it's time to get out the information we need.
 
-First, we need a simple table of pages + the MD5 hash of the page content:
+## Page hashes
+
+First, we need the MD5 hash of the page content, which will be used to determine
+if pages have changed since the last scrape.
 
 ```{r md5_hash}
 md5s <- mclapply(ECOS_dl_data$File, 
                  species_page_md5,
-                 mc.cores = NCORE)
+                 mc.cores = NCORE,
+                 mc.preschedule = FALSE)
 ECOS_dl_data$MD5 <- unlist(md5s)
 kable(head(ECOS_dl_data, 10))
 ```
 
-# Save .rdas
+## Page links
 
-Last, for now, we will combine the data and save it as `.rda`:
+We will want all of the links (URLs) on each species' page, not only to fetch 
+that information but also to check whether any changes detected from the hashing
+are 'substantive' changes.
+
+```{r get_links}
+
+```
+
+## Page tables
+
+The tables on each species' page contain useful information, so we will extract
+all the tables.
+
+```{r get_tables}
+
+```
+
+# Save Data
+
+Last, for now, we will combine the data sets as appropriate and save them as
+`.rda`s:
 
 ```{r save_data}
 TECP_domestic <- dom
 save(ECOS_dl_data, file = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
 save(TECP_domestic, file = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
 save(TECP_summary, file = "/datadrive/data/ECOS/rda/TECP_summary.rda")
-# TECP_summary$Type <- "TECP_table"
-# sp_summary$Type <- rep("species_page", length(sp_summary$Species))
-# ECOS_summary <- rbind(TECP_summary, sp_summary)
-# kable(head(ECOS_summary))
-# save(ECOS_summary, file = "../data/ECOS_summary.rda")
 ```

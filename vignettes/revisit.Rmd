@@ -1,0 +1,25 @@
+---
+title: "`r paste('Revisit ECOS pages', Sys.Date())`"
+author: "Jacob Malcom, Defenders of Wildlife"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    theme: yeti
+---
+
+```{r setup, include=FALSE}
+library(digest)
+library(dplyr)
+library(ecosdata)
+library(ecosscraper)
+library(knitr)
+library(parallel)
+
+NCORE <- detectCores() - 1
+```
+
+# Load data
+
+Before we 
