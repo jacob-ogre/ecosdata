@@ -14,7 +14,7 @@
 #' @importFrom digest digest
 #' @importFrom httr http_error
 #' @importFrom magrittr %>%
-#' @importFrom parallel mclapply
+#' @importFrom parallel mclapply detectCores
 #' @importFrom pdfdown download_pdf
 #' @importFrom rvest html_attr html_node html_nodes html_table html_text
 #' @importFrom xml2 read_html

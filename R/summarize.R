@@ -33,8 +33,21 @@ get_species_page_summary_ <- function(url, species, pause = TRUE) {
 
 #' Calculate the MD5 digest for an ECOS page
 #'
-#' @param pg An
-page_digest <- function(pg) {
-  md5_hash <- digest(page_txt)
+#' @note Apparently, FWS does not serve the same version of a species' page up
+#' twice in a row. Instead, the same information will be presented in different
+#' orders. We have to use \code{strsplit} along with \link[stringr]{str_trim} to
+#' get clean lines, then sort before doing the MD5 hash.
+#'
+#' @param f Path to a species' ECOS page (either local or URL)
+#' @export
+#' @examples
+#' \dontrun{
+#'   md5 <- species_page_md5("https://goo.gl/kvIcH9")
+#' }
+species_page_md5 <- function(f) {
+  txt <- readLines(f)
+  txt <- unlist(stringr::str_trim(txt))
+  txt <- sort(txt)
+  md5_hash <- digest(txt)
   return(md5_hash)
 }

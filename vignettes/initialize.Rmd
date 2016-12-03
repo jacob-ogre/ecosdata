@@ -15,6 +15,9 @@ library(dplyr)
 library(ecosdata)
 library(ecosscraper)
 library(knitr)
+library(parallel)
+
+NCORE <- detectCores() - 1
 ```
 
 # Get Base dfs
@@ -43,19 +46,55 @@ proposed. But we're primarily interested in domestic T & E only, so we filter:
 
 ```{r domestic}
 dom <- filter_listed(TECP_table) %>% filter_domestic()
+dom_MD5 <- digest(dom)
 kable(head(dom))
 ```
 
 # Species' Pages
 
-Now we can get baseline data on every species' ECOS page.
+## Downloading
 
-```{r scrape_species}
-sp_base <- get_species_baseline(dom$Species_Page[1:3], 
-                                dom$Scientific_Name[1:3], 
-                                FALSE)
-sp_summary <- bind_rows(sp_base)
-kable(head(sp_summary))
+Now we can get every species' ECOS page and save them all locally, which will
+facilitate all sorts of processing:
+
+```{r scrape_species_pages}
+files <- mclapply(dom$Species_Page, 
+                  FUN = GET_page,
+                  pause = TRUE,
+                  mc.cores = NCORE)
+
+# Using a loop because it's plenty fast:
+fnames <- rep("", length(files))
+for(i in 1:length(files)) {
+  fname <- paste0("/datadrive/data/ECOS/html/", 
+                  dom$Species_Code[i], "_", Sys.Date(), ".html")
+  if(!is.na(files[[i]])) {
+    writeLines(files[[i]], con = fname)
+    fnames[i] <- fname 
+  } else {
+    warning(paste("Problem with URL:", dom$Species_Page[i]))
+    fnames[i] <- NA
+  }
+}
+
+ECOS_dl_data <- data_frame(Page = dom$Species_Page,
+                           File = fnames,
+                           Date_DL = Sys.Date())
+```
+
+Oh, the possibilities!
+
+## Processing
+
+Now that we have local copies, it's time to get out all of the information.
+
+First, we need a simple table of pages + the MD5 hash of the page content:
+
+```{r md5_hash}
+md5s <- mclapply(ECOS_dl_data$File, 
+                 species_page_md5,
+                 mc.cores = NCORE)
+ECOS_dl_data$MD5 <- unlist(md5s)
 ```
 
 # Save .rdas
@@ -63,9 +102,14 @@ kable(head(sp_summary))
 Last, for now, we will combine the data and save it as `.rda`:
 
 ```{r save_data}
-TECP_summary$Type <- "TECP_table"
-sp_summary$Type <- rep("species_page", length(sp_summary$Species))
-ECOS_summary <- rbind(TECP_summary, sp_summary)
-kable(head(ECOS_summary))
-save(ECOS_summary, file = "../data/ECOS_summary.rda")
+TECP_domestic <- dom
+save(ECOS_dl_data, con = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
+save(TECP_domestic, con = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
+save(TECP_summary, con = "/datadrive/data/ECOS/rda/TECP_summary.rda")
+kable(head(ECOS_dl_data))
+# TECP_summary$Type <- "TECP_table"
+# sp_summary$Type <- rep("species_page", length(sp_summary$Species))
+# ECOS_summary <- rbind(TECP_summary, sp_summary)
+# kable(head(ECOS_summary))
+# save(ECOS_summary, file = "../data/ECOS_summary.rda")
 ```
