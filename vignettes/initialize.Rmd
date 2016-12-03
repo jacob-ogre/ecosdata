@@ -62,14 +62,15 @@ facilitate all sorts of processing:
 files <- mclapply(dom$Species_Page, 
                   FUN = GET_page,
                   pause = TRUE,
-                  mc.cores = NCORE)
+                  mc.cores = NCORE,
+                  mc.preschedule = FALSE)
 
 # Using a loop because it's plenty fast:
 fnames <- rep("", length(files))
 for(i in 1:length(files)) {
   fname <- paste0("/datadrive/data/ECOS/html/", 
                   dom$Species_Code[i], "_", Sys.Date(), ".html")
-  if(!is.na(files[[i]])) {
+  if(!is.null(files[[i]]) & !is.na(files[[i]])) {
     writeLines(files[[i]], con = fname)
     fnames[i] <- fname 
   } else {
@@ -96,6 +97,7 @@ md5s <- mclapply(ECOS_dl_data$File,
                  species_page_md5,
                  mc.cores = NCORE)
 ECOS_dl_data$MD5 <- unlist(md5s)
+kable(head(ECOS_dl_data, 10))
 ```
 
 # Save .rdas
@@ -104,10 +106,9 @@ Last, for now, we will combine the data and save it as `.rda`:
 
 ```{r save_data}
 TECP_domestic <- dom
-save(ECOS_dl_data, con = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
-save(TECP_domestic, con = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
-save(TECP_summary, con = "/datadrive/data/ECOS/rda/TECP_summary.rda")
-kable(head(ECOS_dl_data))
+save(ECOS_dl_data, file = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
+save(TECP_domestic, file = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
+save(TECP_summary, file = "/datadrive/data/ECOS/rda/TECP_summary.rda")
 # TECP_summary$Type <- "TECP_table"
 # sp_summary$Type <- rep("species_page", length(sp_summary$Species))
 # ECOS_summary <- rbind(TECP_summary, sp_summary)
