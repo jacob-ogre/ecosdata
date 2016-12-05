@@ -148,7 +148,9 @@ if pages have changed since the last scrape.
 if(!exists("ECOS_dl_data.rda")) {
   load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
 }
-md5s <- mclapply(ECOS_dl_data$File, 
+# files <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
+files <- ECOS_dl_data$File
+md5s <- mclapply(files,
                  species_page_md5,
                  mc.cores = NCORE,
                  mc.preschedule = FALSE)
@@ -163,8 +165,8 @@ that information but also to check whether any changes detected from the hashing
 are 'substantive' changes.
 
 ```{r get_links}
-htmls <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
-sp_links <- mclapply(htmls, 
+# files <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
+sp_links <- mclapply(files, 
                      get_species_links,
                      mc.cores = 3,
                      mc.preschedule = FALSE)
@@ -189,7 +191,24 @@ The tables on each species' page contain useful information, so we will extract
 all the tables.
 
 ```{r get_tables}
-
+tabs <- mclapply(files[1:5],
+                 get_species_tables,
+                 mc.cores = NCORE,
+                 mc.preschedule = FALSE)
+tab_names <- map(1:length(tabs), function(x) names(tabs[[x]])) %>%
+               unlist() %>% unique()
+names(tabs) <- c(as.character(seq(1, length(tabs))))
+SP_TABS <- bind_tables(tabs, "SP_TAB")
+FR_TABS <- bind_tables(tabs, "FR_TAB")
+REC_TABS <- bind_tables(tabs, "REC_TAB")
+DOC_TABS <- bind_tables(tabs, "DOC_TAB")
+REV_TABS <- bind_tables(tabs, "REV_TAB")
+CH_TABS <- bind_tables(tabs, "CH_TAB")
+HCP_TABS <- bind_tables(tabs, "HCP Plan Summaries")
+SHA_TABS <- bind_tables(tabs, "SHA Plan Summaries")
+CCA_TABS <- bind_tables(tabs, "CCA Plan Summaries")
+CCAA_TABS <- bind_tables(tabs, "CCAA Plan Summaries")
+kable(head(SP_TABS, 10))
 ```
 
 # Save Data

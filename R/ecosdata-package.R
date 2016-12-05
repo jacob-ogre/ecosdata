@@ -8,10 +8,10 @@
 #' \link[ecosscraper]{ecosscraper} to do the "analysis" of scraping ECOS and
 #' storing the information in a central location.
 #'
-#' @import dplyr
 #' @import ecosscraper
 #' @import purrr
 #' @importFrom digest digest
+#' @importFrom dplyr filter bind_rows left_join
 #' @importFrom httr http_error
 #' @importFrom magrittr %>%
 #' @importFrom parallel mclapply detectCores
