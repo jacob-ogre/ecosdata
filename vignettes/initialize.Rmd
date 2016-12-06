@@ -17,6 +17,7 @@ library(ecosdata)
 library(ecosscraper)
 library(knitr)
 library(parallel)
+library(purrr)
 
 NCORE <- detectCores() - 1
 ```
@@ -62,29 +63,14 @@ facilitate all sorts of processing:
 ########################################################################
 # # Comment out the big scrape for now because most HTML already fetched
 ########################################################################
-# files <- mclapply(dom$Species_Page, 
-#                   FUN = GET_page,
-#                   pause = TRUE,
-#                   mc.cores = NCORE,
-#                   mc.preschedule = FALSE)
-
-# # Using a loop because it's plenty fast:
-# fnames <- rep("", length(files))
-# for(i in 1:length(files)) {
-#   fname <- paste0("/datadrive/data/ECOS/html/", 
-#                   dom$Species_Code[i], "_", Sys.Date(), ".html")
-#   if(!is.null(files[[i]]) & !is.na(files[[i]])) {
-#     writeLines(files[[i]], con = fname)
-#     fnames[i] <- fname 
-#   } else {
-#     warning(paste("Problem with URL:", dom$Species_Page[i]))
-#     fnames[i] <- NA
-#   }
-# }
-# 
-# ECOS_dl_data <- data_frame(Page = dom$Species_Page,
-#                            File = fnames,
-#                            Date_DL = Sys.Date())
+urls <- TECP_table$Species_Page
+dirs <- paste0("/datadrive/data/ECOS/species/", TECP_table$Species_Code)
+res <- lapply(dirs, function(x) if(!dir.exists(x)) dir.create(x, recursive = TRUE))
+fils <-  file.path(dirs, paste0(TECP_table$Species_Code, "_", Sys.Date(), ".html"))
+results <- map2(.x = urls, .y = fils, get_ECOS_page)
+ECOS_dl_07Dec2016 <- data_frame(Page = TECP_table$Species_Page,
+                                File = fils)
+save(ECOS_dl_07Dec2016, file = "/datadrive/data/ECOS/rda/ECOS_dl_07Dec2016.rda")
 # dim(ECOS_dl_data)
 # sum(is.na(ECOS_dl_data$File))
 ```
@@ -145,17 +131,17 @@ First, we need the MD5 hash of the page content, which will be used to determine
 if pages have changed since the last scrape.
 
 ```{r md5_hash}
-if(!exists("ECOS_dl_data.rda")) {
-  load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
-}
-# files <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
-files <- ECOS_dl_data$File
-md5s <- mclapply(files,
-                 species_page_md5,
-                 mc.cores = NCORE,
-                 mc.preschedule = FALSE)
-ECOS_dl_data$MD5 <- unlist(md5s)
-kable(head(ECOS_dl_data, 10))
+# if(!exists("ECOS_dl_data.rda")) {
+#   load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
+# }
+# # files <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
+# files <- ECOS_dl_data$File
+# md5s <- mclapply(files,
+#                  species_page_md5,
+#                  mc.cores = NCORE,
+#                  mc.preschedule = FALSE)
+# ECOS_dl_data$MD5 <- unlist(md5s)
+# kable(head(ECOS_dl_data, 10))
 ```
 
 ## Page links
@@ -166,23 +152,23 @@ are 'substantive' changes.
 
 ```{r get_links}
 # files <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
-sp_links <- mclapply(files, 
-                     get_species_links,
-                     mc.cores = 3,
-                     mc.preschedule = FALSE)
-ECOS_species_links <- bind_rows(sp_links)
-kable(head(ECOS_species_links, 10))
+# sp_links <- mclapply(files, 
+#                      get_species_links,
+#                      mc.cores = 3,
+#                      mc.preschedule = FALSE)
+# ECOS_species_links <- bind_rows(sp_links)
+# kable(head(ECOS_species_links, 10))
 ```
 
 That gives us `r length(ECOS_species_links[[1]])` URLs that may be of use. Just 
 out of curiosity, how many are links to images?
 
 ```{r img_links}
-img <- filter(ECOS_species_links,
-              grepl(ECOS_species_links$link,
-                    pattern = "jpg$|JPG$|gif$|png$"))
-dim(img)
-head(img)
+# img <- filter(ECOS_species_links,
+#               grepl(ECOS_species_links$link,
+#                     pattern = "jpg$|JPG$|gif$|png$"))
+# dim(img)
+# head(img)
 ```
 
 ## Page tables
@@ -191,24 +177,24 @@ The tables on each species' page contain useful information, so we will extract
 all the tables.
 
 ```{r get_tables}
-tabs <- mclapply(files[1:5],
-                 get_species_tables,
-                 mc.cores = NCORE,
-                 mc.preschedule = FALSE)
-tab_names <- map(1:length(tabs), function(x) names(tabs[[x]])) %>%
-               unlist() %>% unique()
-names(tabs) <- c(as.character(seq(1, length(tabs))))
-SP_TABS <- bind_tables(tabs, "SP_TAB")
-FR_TABS <- bind_tables(tabs, "FR_TAB")
-REC_TABS <- bind_tables(tabs, "REC_TAB")
-DOC_TABS <- bind_tables(tabs, "DOC_TAB")
-REV_TABS <- bind_tables(tabs, "REV_TAB")
-CH_TABS <- bind_tables(tabs, "CH_TAB")
-HCP_TABS <- bind_tables(tabs, "HCP Plan Summaries")
-SHA_TABS <- bind_tables(tabs, "SHA Plan Summaries")
-CCA_TABS <- bind_tables(tabs, "CCA Plan Summaries")
-CCAA_TABS <- bind_tables(tabs, "CCAA Plan Summaries")
-kable(head(SP_TABS, 10))
+# tabs <- mclapply(files[1:5],
+#                  get_species_tables,
+#                  mc.cores = NCORE,
+#                  mc.preschedule = FALSE)
+# tab_names <- map(1:length(tabs), function(x) names(tabs[[x]])) %>%
+#                unlist() %>% unique()
+# names(tabs) <- c(as.character(seq(1, length(tabs))))
+# SP_TABS <- bind_tables(tabs, "SP_TAB")
+# FR_TABS <- bind_tables(tabs, "FR_TAB")
+# REC_TABS <- bind_tables(tabs, "REC_TAB")
+# DOC_TABS <- bind_tables(tabs, "DOC_TAB")
+# REV_TABS <- bind_tables(tabs, "REV_TAB")
+# CH_TABS <- bind_tables(tabs, "CH_TAB")
+# HCP_TABS <- bind_tables(tabs, "HCP Plan Summaries")
+# SHA_TABS <- bind_tables(tabs, "SHA Plan Summaries")
+# CCA_TABS <- bind_tables(tabs, "CCA Plan Summaries")
+# CCAA_TABS <- bind_tables(tabs, "CCAA Plan Summaries")
+# kable(head(SP_TABS, 10))
 ```
 
 # Save Data
@@ -217,8 +203,7 @@ Last, for now, we will combine the data sets as appropriate and save them as
 `.rda`s:
 
 ```{r save_data}
-TECP_domestic <- dom
-save(ECOS_dl_data, file = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
-save(TECP_domestic, file = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
-save(TECP_summary, file = "/datadrive/data/ECOS/rda/TECP_summary.rda")
+# save(ECOS_dl_data, file = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
+# save(TECP_domestic, file = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
+# save(TECP_summary, file = "/datadrive/data/ECOS/rda/TECP_summary.rda")
 ```
