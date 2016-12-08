@@ -22,4 +22,4 @@ NCORE <- detectCores() - 1
 
 # Load data
 
-Before we 
+This is just a test run for the moment.

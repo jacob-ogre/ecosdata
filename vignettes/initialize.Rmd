@@ -20,7 +20,10 @@ library(parallel)
 library(purrr)
 
 NCORE <- detectCores() - 1
+BASED <- "~/Work/Data/ECOS"
 ```
+
+`r Sys.time()`
 
 # Get Base Data
 
@@ -37,20 +40,9 @@ kable(head(TECP_table))
 ```
 
 At this initial scrape, it is interesting to see one Hawaiian species' common
-name, which features backticks, gets turned to "code" (_Abutilon menziesii_). 
+name, which features backticks, gets turned to "code" (e.g., _Abutilon menziesii_).
 We will keep the summary df of the TECP_table for joining with the per-species 
 page scrape summary data, to be saved later.
-
-## Filter species
-
-By default, `get_TECP_table` records foreign + domestic and T & E + candidates /
-proposed. But we're primarily interested in domestic T & E only, so we filter:
-
-```{r domestic}
-dom <- filter_listed(TECP_table) %>% filter_domestic()
-dom_MD5 <- digest(dom)
-kable(head(dom))
-```
 
 # Get Species' Pages
 
@@ -60,62 +52,20 @@ Now we can get every species' ECOS page and save them all locally, which will
 facilitate all sorts of processing:
 
 ```{r scrape_species_pages}
-########################################################################
-# # Comment out the big scrape for now because most HTML already fetched
-########################################################################
-urls <- TECP_table$Species_Page
-dirs <- paste0("/datadrive/data/ECOS/species/", TECP_table$Species_Code)
+######################################################################
+# The initial scraping was done 07 Dec 2016 ca. 2am, but other R code chunks
+# run later in the day to 
+urls <- TECP_table$Species_Page[1:5]
+dirs <- paste0(BASED, "/species/", TECP_table$Species_Code[1:5])
 res <- lapply(dirs, function(x) if(!dir.exists(x)) dir.create(x, recursive = TRUE))
-fils <-  file.path(dirs, paste0(TECP_table$Species_Code, "_", Sys.Date(), ".html"))
-results <- map2(.x = urls, .y = fils, get_ECOS_page)
-ECOS_dl_07Dec2016 <- data_frame(Page = TECP_table$Species_Page,
-                                File = fils)
-save(ECOS_dl_07Dec2016, file = "/datadrive/data/ECOS/rda/ECOS_dl_07Dec2016.rda")
-# dim(ECOS_dl_data)
-# sum(is.na(ECOS_dl_data$File))
-```
-
-## Revisiting pages
-
-A handful of ECOS pages weren't downloaded for some reason on the first pass, so 
-we need to try getting them again, and integrating the results into the main 
-data_frame.
-
-```{r revisit}
-# load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
-# NAs <- dplyr::filter(ECOS_dl_data, is.na(ECOS_dl_data$File))
-# success <- dplyr::filter(ECOS_dl_data, !is.na(ECOS_dl_data$File))
-# 
-# print("Made it past success")
-# 
-# retry <- lapply(NAs$Page, GET_page)
-# miss <- rep("", length(retry))
-# for(i in 1:length(retry)) {
-#   cur_dat <- dplyr::filter(dom, Species_Page == NAs$Page[i])
-#   fname <- paste0("/datadrive/data/ECOS/html/", 
-#                   cur_dat$Species_Code, "_", Sys.Date(), ".html")
-#   if(!is.null(retry[[i]]) & !is.na(retry[[i]])) {
-#     writeLines(retry[[i]], con = fname)
-#     miss[i] <- fname 
-#   } else {
-#     warning(paste("Problem with URL:", cur_dat$Species_Page))
-#     miss[i] <- NA
-#   }
-# }
-# 
-# redux <- data_frame(Page = NAs$Page,
-#                     File = miss,
-#                     Date_DL = Sys.Date())
-# 
-# md5s <- mclapply(redux$File, 
-#                  species_page_md5,
-#                  mc.cores = NCORE,
-#                  mc.preschedule = FALSE)
-# redux$MD5 <- unlist(md5s)
-# 
-# ECOS_dl_data <- rbind(success, redux)
-# dim(ECOS_dl_data)
-# sum(is.na(ECOS_dl_data$File))
+fils <-  file.path(dirs, paste0(TECP_table$Species_Code[1:5], 
+                                "_", Sys.Date(), ".html"))
+results <- mcmapply(download_species_page, urls, fils, SIMPLIFY = FALSE,
+                    mc.cores = NCORE, mc.preschedule = FALSE)
+results <- bind_rows(results)
+ECOS_dl_08Dec2016 <- results
+save(ECOS_dl_08Dec2016, 
+     file = paste0(BASED, "/rda/ECOS_dl_08Dec2016.rda"))
 ```
 
 Oh, the possibilities! For example, we could create a parallel ECOS that 
@@ -127,21 +77,17 @@ Now that we have local copies, it's time to get out the information we need.
 
 ## Page hashes
 
-First, we need the MD5 hash of the page content, which will be used to determine
-if pages have changed since the last scrape.
+First, we need the MD5 hash of the page content, which will be the first step in
+determining if pages have changed since the last scrape.
 
 ```{r md5_hash}
-# if(!exists("ECOS_dl_data.rda")) {
-#   load("/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
-# }
-# # files <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
-# files <- ECOS_dl_data$File
-# md5s <- mclapply(files,
-#                  species_page_md5,
-#                  mc.cores = NCORE,
-#                  mc.preschedule = FALSE)
-# ECOS_dl_data$MD5 <- unlist(md5s)
-# kable(head(ECOS_dl_data, 10))
+files <- ECOS_dl_08Dec2016$dest
+md5s <- mclapply(files,
+                 species_page_md5,
+                 mc.cores = NCORE,
+                 mc.preschedule = FALSE)
+ECOS_dl_08Dec2016$MD5 <- unlist(md5s)
+kable(head(ECOS_dl_08Dec2016, 10))
 ```
 
 ## Page links
@@ -151,24 +97,24 @@ that information but also to check whether any changes detected from the hashing
 are 'substantive' changes.
 
 ```{r get_links}
-# files <- list.files("~/Work/Data/ECOS/html", full.names = TRUE)
-# sp_links <- mclapply(files, 
-#                      get_species_links,
-#                      mc.cores = 3,
-#                      mc.preschedule = FALSE)
-# ECOS_species_links <- bind_rows(sp_links)
-# kable(head(ECOS_species_links, 10))
+sp_links <- mclapply(files, 
+                     get_species_links,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+ECOS_species_links <- bind_rows(sp_links)
+kable(head(ECOS_species_links, 10))
 ```
 
 That gives us `r length(ECOS_species_links[[1]])` URLs that may be of use. Just 
-out of curiosity, how many are links to images?
+out of curiosity, how many are links to images? (Note that this does not include
+the PNGs of species' ranges.)
 
 ```{r img_links}
-# img <- filter(ECOS_species_links,
-#               grepl(ECOS_species_links$link,
-#                     pattern = "jpg$|JPG$|gif$|png$"))
-# dim(img)
-# head(img)
+img <- filter(ECOS_species_links,
+              grepl(ECOS_species_links$link,
+                    pattern = "jpg$|JPG$|gif$|png$"))
+dim(img)
+kable(head(img))
 ```
 
 ## Page tables
@@ -177,24 +123,24 @@ The tables on each species' page contain useful information, so we will extract
 all the tables.
 
 ```{r get_tables}
-# tabs <- mclapply(files[1:5],
-#                  get_species_tables,
-#                  mc.cores = NCORE,
-#                  mc.preschedule = FALSE)
-# tab_names <- map(1:length(tabs), function(x) names(tabs[[x]])) %>%
-#                unlist() %>% unique()
-# names(tabs) <- c(as.character(seq(1, length(tabs))))
-# SP_TABS <- bind_tables(tabs, "SP_TAB")
-# FR_TABS <- bind_tables(tabs, "FR_TAB")
-# REC_TABS <- bind_tables(tabs, "REC_TAB")
-# DOC_TABS <- bind_tables(tabs, "DOC_TAB")
-# REV_TABS <- bind_tables(tabs, "REV_TAB")
-# CH_TABS <- bind_tables(tabs, "CH_TAB")
-# HCP_TABS <- bind_tables(tabs, "HCP Plan Summaries")
-# SHA_TABS <- bind_tables(tabs, "SHA Plan Summaries")
-# CCA_TABS <- bind_tables(tabs, "CCA Plan Summaries")
-# CCAA_TABS <- bind_tables(tabs, "CCAA Plan Summaries")
-# kable(head(SP_TABS, 10))
+tabs <- mclapply(files,
+                 get_species_tables,
+                 mc.cores = NCORE,
+                 mc.preschedule = FALSE)
+tab_names <- map(1:length(tabs), function(x) names(tabs[[x]])) %>%
+               unlist() %>% unique()
+names(tabs) <- c(as.character(seq(1, length(tabs))))
+SP_TABS <- bind_tables(tabs, "SP_TAB")
+FR_TABS <- bind_tables(tabs, "FR_TAB")
+REC_TABS <- bind_tables(tabs, "REC_TAB")
+DOC_TABS <- bind_tables(tabs, "DOC_TAB")
+REV_TABS <- bind_tables(tabs, "REV_TAB")
+CH_TABS <- bind_tables(tabs, "CH_TAB")
+HCP_TABS <- bind_tables(tabs, "HCP Plan Summaries")
+SHA_TABS <- bind_tables(tabs, "SHA Plan Summaries")
+CCA_TABS <- bind_tables(tabs, "CCA Plan Summaries")
+CCAA_TABS <- bind_tables(tabs, "CCAA Plan Summaries")
+kable(head(SP_TABS, 10))
 ```
 
 # Save Data
@@ -205,5 +151,7 @@ Last, for now, we will combine the data sets as appropriate and save them as
 ```{r save_data}
 # save(ECOS_dl_data, file = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
 # save(TECP_domestic, file = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
-# save(TECP_summary, file = "/datadrive/data/ECOS/rda/TECP_summary.rda")
+save(TECP_summary, file = "/datadrive/data/ECOS/rda/TECP_summary_07Dec2016.rda")
 ```
+
+`r Sys.time()`
