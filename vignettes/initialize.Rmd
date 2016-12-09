@@ -11,6 +11,8 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=FALSE)
+
 library(digest)
 library(dplyr)
 library(ecosdata)
@@ -36,6 +38,10 @@ data from the main table of ECOS:
 TECP_init <- get_TECP_baseline()
 TECP_table <- TECP_init$TECP_table
 TECP_summary <- TECP_init$TECP_summary
+save(TECP_table, 
+     file = file.path(BASED, "rda", paste0("TECP_table", Sys.Date(), ".rda")))
+save(TECP_summary, 
+     file = file.path(BASED, "rda", paste0("TECP_summary", Sys.Date(), ".rda")))
 kable(head(TECP_table))
 ```
 
@@ -55,17 +61,20 @@ facilitate all sorts of processing:
 ######################################################################
 # The initial scraping was done 07 Dec 2016 ca. 2am, but other R code chunks
 # run later in the day to 
-urls <- TECP_table$Species_Page[1:5]
-dirs <- paste0(BASED, "/species/", TECP_table$Species_Code[1:5])
+urls <- TECP_table$Species_Page[1:20]
+dirs <- paste0(BASED, "/species/", TECP_table$Species_Code[1:20])
 res <- lapply(dirs, function(x) if(!dir.exists(x)) dir.create(x, recursive = TRUE))
-fils <-  file.path(dirs, paste0(TECP_table$Species_Code[1:5], 
+fils <-  file.path(dirs, paste0(TECP_table$Species_Code[1:20], 
                                 "_", Sys.Date(), ".html"))
-results <- mcmapply(download_species_page, urls, fils, SIMPLIFY = FALSE,
-                    mc.cores = NCORE, mc.preschedule = FALSE)
+results <- mcmapply(download_species_page, 
+                    urls, fils, 
+                    SIMPLIFY = FALSE,
+                    USE.NAMES = FALSE, 
+                    mc.cores = NCORE, 
+                    mc.preschedule = FALSE)
 results <- bind_rows(results)
+results$species <- TECP_table$Scientific_Name[1:20]
 ECOS_dl_08Dec2016 <- results
-save(ECOS_dl_08Dec2016, 
-     file = paste0(BASED, "/rda/ECOS_dl_08Dec2016.rda"))
 ```
 
 Oh, the possibilities! For example, we could create a parallel ECOS that 
@@ -87,6 +96,9 @@ md5s <- mclapply(files,
                  mc.cores = NCORE,
                  mc.preschedule = FALSE)
 ECOS_dl_08Dec2016$MD5 <- unlist(md5s)
+save(ECOS_dl_08Dec2016, 
+     file = file.path(BASED, "rda", 
+                      paste0("ECOS_dl_", Sys.Date(), ".rda")))
 kable(head(ECOS_dl_08Dec2016, 10))
 ```
 
@@ -102,6 +114,8 @@ sp_links <- mclapply(files,
                      mc.cores = NCORE,
                      mc.preschedule = FALSE)
 ECOS_species_links <- bind_rows(sp_links)
+save(ECOS_species_links, 
+     file = file.path(BASED, "rda", "ECOS_species_links.rda"))
 kable(head(ECOS_species_links, 10))
 ```
 
@@ -130,28 +144,168 @@ tabs <- mclapply(files,
 tab_names <- map(1:length(tabs), function(x) names(tabs[[x]])) %>%
                unlist() %>% unique()
 names(tabs) <- c(as.character(seq(1, length(tabs))))
-SP_TABS <- bind_tables(tabs, "SP_TAB")
-FR_TABS <- bind_tables(tabs, "FR_TAB")
-REC_TABS <- bind_tables(tabs, "REC_TAB")
-DOC_TABS <- bind_tables(tabs, "DOC_TAB")
-REV_TABS <- bind_tables(tabs, "REV_TAB")
-CH_TABS <- bind_tables(tabs, "CH_TAB")
-HCP_TABS <- bind_tables(tabs, "HCP Plan Summaries")
-SHA_TABS <- bind_tables(tabs, "SHA Plan Summaries")
-CCA_TABS <- bind_tables(tabs, "CCA Plan Summaries")
-CCAA_TABS <- bind_tables(tabs, "CCAA Plan Summaries")
-kable(head(SP_TABS, 10))
+species_table <- bind_tables(tabs, "SP_TAB")
+fedreg_table <- bind_tables(tabs, "FR_TAB")
+recovery_table <- bind_tables(tabs, "REC_TAB")
+adddoc_table <- bind_tables(tabs, "DOC_TAB")
+fiveyr_table <- bind_tables(tabs, "REV_TAB")
+crithab_table <- bind_tables(tabs, "CH_TAB")
+HCP_table <- bind_tables(tabs, "HCP Plan Summaries")
+SHA_table <- bind_tables(tabs, "SHA Plan Summaries")
+CCA_table <- bind_tables(tabs, "CCA Plan Summaries")
+CCAA_table <- bind_tables(tabs, "CCAA Plan Summaries")
+kable(head(species_table, 10))
 ```
 
-# Save Data
+## Petitions
 
-Last, for now, we will combine the data sets as appropriate and save them as
-`.rda`s:
+The petitions table on ECOS pages are javascript-generated and don't appear
+when scraping using the "normal" approach. The `phantomjs` scraping approach 
+only works in-part because the use of DataTables on ECOS cuts off content. But
+the source of petition data is accessible, so we can generate the tables.
 
-```{r save_data}
-# save(ECOS_dl_data, file = "/datadrive/data/ECOS/rda/ECOS_dl_data.rda")
-# save(TECP_domestic, file = "/datadrive/data/ECOS/rda/TECP_domestic.rda")
-save(TECP_summary, file = "/datadrive/data/ECOS/rda/TECP_summary_07Dec2016.rda")
+```{r petitions_table}
+TSN <- unlist(lapply(files, get_species_tsn))
+petitions_table <- lapply(TSN, get_petitions_table)
+names(petitions_table) <- ECOS_dl_08Dec2016$species
+petitions_table <- bind_rows(petitions_table)
+save(petitions_table, 
+     file = file.path(BASED, "rda", 
+                      paste0("petitions_table_", Sys.Date(), ".rda")))
+if(dim(petitions_table)[1] > 0) kable(head(petitions_table))
+```
+
+Now that we have the petitions table, we can anaylze factors that may affect
+whether FWS lists a species.
+
+## Counties of occurrence
+
+Although we have manually curated the counties-of-occurrence data for most
+species elsewhere, we want to be able to automate the downloading and monitor
+for changes.
+
+```{r county_occ}
+co_urls <- filter(ECOS_species_links, 
+                  grepl(ECOS_species_links$link, pattern = "countiesBySpecies"))
+counties_tabs <- mcmapply(get_counties, 
+                          co_urls$link, co_urls$Scientific_Name,
+                          SIMPLIFY = FALSE,
+                          mc.cores = NCORE,
+                          mc.preschedule = FALSE)
+counties_table <- bind_rows(counties_tabs)
+save(counties_table, 
+     file = file.path(BASED, "rda", 
+                      paste0("counties_table_", Sys.Date(), ".rda")))
+kable(head(counties_table))
+```
+
+## Section 10 agreements
+
+Voluntary conservation agreements authorized under section 10 of the ESA include
+HCPs, SHAs, and CCA/As. We can get metadata for all agreements linked to a
+species, including links to agreement documents when provided. Unfortunately,
+FWS records different data for each type of conservation agreement, so we have 
+to keep each of the types separate. On the upside, doing so makes it easier to
+identify the different types of plans.
+
+```{r section10}
+HCP_url <- HCP_table$Doc_Link
+HCP_spp <- HCP_table$Species
+HCP_data <- mcmapply(get_conservation_plan_data,
+                     HCP_url, HCP_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+HCP_data <- bind_rows(HCP_data)
+save(HCP_data, 
+     file = file.path(BASED, "rda", 
+                      paste0("HCP_data_", Sys.Date(), ".rda")))
+
+HCP_docs <- mcmapply(get_conservation_plan_doc_links,
+                     HCP_url, HCP_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+HCP_docs <- bind_rows(HCP_docs)
+save(HCP_docs,
+     file = file.path(BASED, "rda", 
+                      paste0("HCP_docs_", Sys.Date(), ".rda")))
+
+
+SHA_url <- SHA_table$Doc_Link
+SHA_spp <- SHA_table$Species
+SHA_data <- mcmapply(get_conservation_plan_data,
+                     SHA_url, SHA_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+SHA_data <- bind_rows(SHA_data)
+save(SHA_data,
+     file = file.path(BASED, "rda", 
+                      paste0("SHA_data_", Sys.Date(), ".rda")))
+
+SHA_docs <- mcmapply(get_conservation_plan_doc_links,
+                     SHA_url, SHA_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+SHA_docs <- bind_rows(SHA_docs)
+save(SHA_docs,
+     file = file.path(BASED, "rda", 
+                      paste0("SHA_docs_", Sys.Date(), ".rda")))
+
+CCA_url <- CCA_table$Doc_Link
+CCA_spp <- CCA_table$Species
+CCA_data <- mcmapply(get_conservation_plan_data,
+                     CCA_url, CCA_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+CCA_data <- bind_rows(CCA_data)
+save(CCA_data,
+     file = file.path(BASED, "rda", 
+                      paste0("CCA_data_", Sys.Date(), ".rda")))
+
+CCA_docs <- mcmapply(get_conservation_plan_doc_links,
+                     CCA_url, CCA_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+CCA_docs <- bind_rows(CCA_docs)
+save(CCA_docs,
+     file = file.path(BASED, "rda", 
+                      paste0("CCA_docs_", Sys.Date(), ".rda")))
+
+CCAA_url <- CCAA_table$Doc_Link
+CCAA_spp <- CCAA_table$Species
+CCAA_data <- mcmapply(get_conservation_plan_data,
+                     CCAA_url, CCAA_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+CCAA_data <- bind_rows(CCAA_data)
+save(CCAA_data,
+     file = file.path(BASED, "rda", 
+                      paste0("CCAA_data_", Sys.Date(), ".rda")))
+
+CCAA_docs <- mcmapply(get_conservation_plan_doc_links,
+                     CCAA_url, CCAA_spp,
+                     SIMPLIFY = FALSE,
+                     USE.NAMES = FALSE,
+                     mc.cores = NCORE,
+                     mc.preschedule = FALSE)
+CCAA_docs <- bind_rows(CCAA_docs)
+save(CCAA_docs,
+     file = file.path(BASED, "rda", 
+                      paste0("CCAA_docs_", Sys.Date(), ".rda")))
+
 ```
 
 `r Sys.time()`
