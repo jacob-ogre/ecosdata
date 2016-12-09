@@ -2,7 +2,6 @@
 
 export(GET_page)
 export(get_TECP_baseline)
-export(get_species_baseline)
 export(get_species_page_summary_)
 export(species_page_md5)
 import(ecosscraper)
