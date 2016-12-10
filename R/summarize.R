@@ -66,3 +66,23 @@ species_page_md5 <- function(f) {
 doc_md5 <- function(f) {
   digest(f, file = TRUE, errormode = "warn")
 }
+
+#' Slightly improved \link[base]{file.info}
+#'
+#' @details Move the file name from rowname and into \code{$path} of
+#' \link[tidyr]{data_frame}.
+#'
+#' @param ... Paths to one or more files to gather info
+#' @export
+#' @examples
+#' \dontrun{
+#'   info <- file_info("~/Downloads/test.pdf")
+#' }
+file_info <- function(...) {
+  info <- file.info(...)
+  info$path <- path.expand(rownames(info))
+  rownames(info) <- seq_along(info$path)
+  info <- as_data_frame(info)
+  info <- info[, c(length(info), 1:(length(info)-1))]
+  return(info)
+}

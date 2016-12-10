@@ -2,6 +2,7 @@
 
 export(GET_page)
 export(doc_md5)
+export(file_info)
 export(get_TECP_baseline)
 export(get_species_page_summary_)
 export(species_page_md5)
