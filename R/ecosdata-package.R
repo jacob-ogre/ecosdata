@@ -11,7 +11,7 @@
 #' @import ecosscraper
 #' @import purrr
 #' @importFrom digest digest
-#' @importFrom dplyr filter bind_rows left_join
+#' @importFrom dplyr filter bind_rows left_join data_frame as_data_frame
 #' @importFrom httr http_error
 #' @importFrom magrittr %>%
 #' @importFrom parallel mclapply detectCores
