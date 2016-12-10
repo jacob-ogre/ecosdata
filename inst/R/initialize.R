@@ -29,10 +29,10 @@ save(TECP_summary,
      file = file.path(BASED, "rda", paste0("TECP_summary_", Sys.Date(), ".rda")))
 
 # Download ECOS page
-urls <- TECP_table$Species_Page[1:20]
-dirs <- file.path(BASED, "species", TECP_table$Species_Code[1:20])
+urls <- TECP_table$Species_Page
+dirs <- file.path(BASED, "species", TECP_table$Species_Code)
 res <- lapply(dirs, function(x) if(!dir.exists(x)) dir.create(x, recursive = TRUE))
-fils <-  file.path(dirs, paste0(TECP_table$Species_Code[1:20],
+fils <-  file.path(dirs, paste0(TECP_table$Species_Code,
                                 "_", Sys.Date(), ".html"))
 results <- mcmapply(download_species_page,
                     urls, fils,
@@ -41,11 +41,11 @@ results <- mcmapply(download_species_page,
                     mc.cores = NCORE,
                     mc.preschedule = FALSE)
 results <- bind_rows(results)
-results$species <- TECP_table$Scientific_Name[1:20]
+results$species <- TECP_table$Scientific_Name
 ECOS_dl <- results
 
 # MD5 hashes
-files <- ECOS_dl$dest
+files <- fils
 md5s <- mclapply(files,
                  species_page_md5,
                  mc.cores = NCORE,
@@ -91,7 +91,9 @@ save(species_table, fedreg_table, recovery_table,
 
 # Petitions tables
 TSN <- unlist(lapply(files, get_species_tsn))
-petitions_table <- lapply(TSN, get_petitions_table)
+petitions_table <- mclapply(TSN, get_petitions_table,
+                            mc.cores = NCORE,
+                            mc.preschedule = FALSE)
 names(petitions_table) <- ECOS_dl$species
 petitions_table <- bind_rows(petitions_table)
 save(petitions_table,

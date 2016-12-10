@@ -51,3 +51,18 @@ species_page_md5 <- function(f) {
   md5_hash <- digest(txt)
   return(md5_hash)
 }
+
+#' Calculate the MD5 digest for a file
+#'
+#' @details A simple wrapper over \link[digest]{digest}, with \code{file = TRUE}
+#' and \code{errormode = "warn"}.
+#'
+#' @param f Path to a file
+#' @export
+#' @examples
+#' \dontrun{
+#'   md5 <- doc_md5("~/Downloads/test.pdf")
+#' }
+doc_md5 <- function(f) {
+  digest(f, file = TRUE, errormode = "warn")
+}
