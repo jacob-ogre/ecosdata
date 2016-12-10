@@ -7,14 +7,23 @@
 library(digest)
 library(ecosdata)
 library(parallel)
-library(tidyverse)
+# library(tidyverse)
 
-BASED <- "/datadrive/data/"
+BASED <- "/datadrive/data"
+# BASED <- "~/Work/Data/ECOS/rda"
+# BASED <- "~/Downloads"
 NCORE <- detectCores() - 1
 
-files <- list.files(based, recursive = TRUE, full.names = TRUE)
-f_info <- lapply()
-MD5s <- mclapply(files, doc_md5,
+pdfs <- list.files(BASED,
+                   pattern = "pdf|PDF",
+                   recursive = TRUE,
+                   full.names = TRUE)
+pdfs_info <- file_info(pdfs)
+MD5s <- mclapply(pdfs,
+                 doc_md5,
                  mc.cores = NCORE,
                  mc.preschedule = FALSE)
 MD5s <- unlist(MD5s)
+pdfs_info$MD5 <- MD5s
+
+save(pdfs_info, file = file.path(BASED, paste0("pdfs_info", Sys.Date(), ".rda")))
