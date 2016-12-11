@@ -67,6 +67,7 @@ misc_res <- mcmapply(download_pdf, misc_url, misc_fil,
                      mc.cores = NCORE,
                      mc.preschedule = FALSE)
 misc_res_df <- bind_rows(misc_res)
+misc_res_df$doc_type <- "misc"
 
 recpln_res <- mcmapply(download_pdf, recpln_url, recpln_fil,
                        SIMPLIFY = FALSE,
@@ -74,6 +75,7 @@ recpln_res <- mcmapply(download_pdf, recpln_url, recpln_fil,
                        mc.cores = NCORE,
                        mc.preschedule = FALSE)
 recpln_res_df <- bind_rows(recpln_res)
+recpln_res_df$doc_type <- "recovery_plan"
 
 fiveyr_res <- mcmapply(download_pdf, fiveyr_url, fiveyr_fil,
                        SIMPLIFY = FALSE,
@@ -81,6 +83,7 @@ fiveyr_res <- mcmapply(download_pdf, fiveyr_url, fiveyr_fil,
                        mc.cores = NCORE,
                        mc.preschedule = FALSE)
 fiveyr_res_df <- bind_rows(fiveyr_res)
+fiveyr_res_df$doc_type <- "five_year_review"
 
 candid_res <- mcmapply(download_pdf, candid_url, candid_fil,
                        SIMPLIFY = FALSE,
@@ -88,6 +91,7 @@ candid_res <- mcmapply(download_pdf, candid_url, candid_fil,
                        mc.cores = NCORE,
                        mc.preschedule = FALSE)
 candid_res_df <- bind_rows(candid_res)
+candid_res_df$doc_type <- "candidate"
 
 fedreg_res <- mcmapply(download_pdf, fedreg_url, fedreg_fil,
                        SIMPLIFY = FALSE,
@@ -95,8 +99,32 @@ fedreg_res <- mcmapply(download_pdf, fedreg_url, fedreg_fil,
                        mc.cores = NCORE,
                        mc.preschedule = FALSE)
 fedreg_res_df <- bind_rows(fedreg_res)
+fedreg_res_df$doc_type <- "federal_register"
 
 save(misc_res_df, recpln_res_df, fiveyr_res_df,
      candid_res_df, fedreg_res_df,
      file = file.path(TMP, paste0("doc_download_", Sys.Date(), ".rda")))
+
+dl_data <- rbind(misc_res_df, recpln_res_df, fiveyr_res_df,
+                 candid_res_df, fedreg_res_df)
+sum(!dl_data$pdfCheck)
+table(dl_data$success)
+
+# MD5s
+dl_data$MD5 <- mclapply(dl_data$dest,
+                        doc_md5,
+                        mc.cores = NCORE,
+                        mc.preschedule = FALSE)
+
+dl_data_pdfs <- filter(dl_data, pdfCheck)
+new_MD5 <- setdiff(dl_data_pdfs$MD5, pdfs_info$MD5)
+length(new_MD5)
+old_MD5 <- setdiff(pdfs_info$MD5, dl_data_pdfs$MD5)
+
+new_to_proc <- filter(dl_data_pdfs, !(dl_data_pdfs$MD5 %in% pdfs_info$MD5))
+new_to_proc <- distinct(new_to_proc, MD5, .keep_all = TRUE)
+new_pdfs <- new_to_proc
+
+save(dl_data, file=file.path(TMP, paste0("dl_data_", Sys.Date(), ".rda")))
+save(new_pdfs, file=file.path(TMP, paste0("new_pdfs_", Sys.Date(), ".rda")))
 
