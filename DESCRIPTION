@@ -1,7 +1,7 @@
 Package: ecosdata
 Type: Package
 Title: Scrape the ECOS Website, http://ecos.fws.gov
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: person("Jacob", "Malcom", email = "jmalcom@defenders.org",
                   role = c("aut", "cre"))
 Maintainer: Jacob Malcom <jmalcom@defenders.org>
@@ -22,5 +22,6 @@ Imports:
 Suggests: knitr,
     rmarkdown
 Remotes:
-    jacob-ogre/ecosscraper
+    jacob-ogre/ecosscraper,
+    Defenders-ESC/pdfdown
 VignetteBuilder: knitr
