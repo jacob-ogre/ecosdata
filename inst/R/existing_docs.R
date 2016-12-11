@@ -10,8 +10,6 @@ library(parallel)
 # library(tidyverse)
 
 BASED <- "/datadrive/data"
-# BASED <- "~/Work/Data/ECOS/rda"
-# BASED <- "~/Downloads"
 NCORE <- detectCores() - 1
 
 pdfs <- list.files(BASED,
@@ -25,5 +23,7 @@ MD5s <- mclapply(pdfs,
                  mc.preschedule = FALSE)
 MD5s <- unlist(MD5s)
 pdfs_info$MD5 <- MD5s
+pdfs_info$file_name <- basename(pdfs_info$path)
 
-save(pdfs_info, file = file.path(BASED, paste0("pdfs_info", Sys.Date(), ".rda")))
+save(pdfs_info,
+     file = file.path(BASED, paste0("pdfs_info", Sys.Date(), ".rda")))
