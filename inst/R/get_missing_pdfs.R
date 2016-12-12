@@ -8,6 +8,8 @@ library(ecosscraper)
 library(httr)
 library(pdfdown)
 
+NCORE <- detectCores() - 1
+
 BASED <- "/datadrive/data/ECOS"
 RDA <- file.path(BASED, "rda")
 TMP <- file.path(BASED, "tmp_dl")
@@ -18,8 +20,9 @@ RECPLN <- file.path(TMP, "recovery_plan")
 FIVEYR <- file.path(TMP, "five_year_review")
 FEDREG <- file.path(TMP, "federal_register")
 CANDID <- file.path(TMP, "candidate")
+CONSAG <- file.path(TMP, "conserv_agmt")
 MISC <- file.path(TMP, "misc")
-dirs <- c(RECPLN, FIVEYR, FEDREG, CANDID, MISC)
+dirs <- c(RECPLN, FIVEYR, FEDREG, CANDID, CONSAG, MISC)
 tmp_res <- lapply(dirs,
                   function(x) if(!dir.exists(x)) dir.create(x, recursive = TRUE))
 
@@ -105,10 +108,28 @@ save(misc_res_df, recpln_res_df, fiveyr_res_df,
      candid_res_df, fedreg_res_df,
      file = file.path(TMP, paste0("doc_download_", Sys.Date(), ".rda")))
 
+# Conservation agreements (section 10) docs
+load(file.path(BASED, "rda", "conservation_agmt_data_2016-12-10.rda"))
+cons_agmt_docs_data <- rbind(HCP_docs, SHA_docs, CCA_docs, CCAA_docs)
+cons_agmt_docs_urls <- unique(cons_agmt_docs_data$url)
+cons_agmt_docs_fils <- file.path(CONSAG,
+                                 clean_fn(basename(cons_agmt_docs_urls)))
+
+consag_res <- mcmapply(download_pdf,
+                       cons_agmt_docs_urls,
+                       cons_agmt_docs_fils,
+                       SIMPLIFY = FALSE,
+                       USE.NAMES = FALSE,
+                       mc.cores = NCORE,
+                       mc.preschedule = FALSE)
+consag_res_df <- bind_rows(consag_res)
+consag_res_df$doc_type <- "conserv_agmt"
+
 dl_data <- rbind(misc_res_df, recpln_res_df, fiveyr_res_df,
-                 candid_res_df, fedreg_res_df)
-sum(!dl_data$pdfCheck)
+                 candid_res_df, fedreg_res_df, consag_res_df)
+sum(!dl_data$pdfCheck, na.rm = TRUE)
 table(dl_data$success)
+non_pdfs <- filter(dl_data, !dl_data$pdfCheck)
 
 # MD5s
 dl_data$MD5 <- mclapply(dl_data$dest,
