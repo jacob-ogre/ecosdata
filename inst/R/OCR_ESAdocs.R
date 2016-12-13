@@ -14,7 +14,7 @@ ESADOC <- file.path(BASED, "ESAdocs")
 FEDREG <- file.path(ESADOC, "federal_register")
 FIVEYR <- file.path(ESADOC, "five_year_review")
 RECPLN <- file.path(ESADOC, "recovery_plan")
-CONSUL <- file.path(ESADOC, "consultations")
+CONSUL <- file.path(ESADOC, "consultation")
 CANDID <- file.path(ESADOC, "candidate")
 CONSAG <- file.path(ESADOC, "conserv_agmt")
 POLICY <- file.path(ESADOC, "policy")
@@ -85,6 +85,7 @@ save(for_OCR, file = file.path(BASED, paste0("for_OCR_", Sys.Date(), ".rda")))
 wrap_ocrmypdf <- function(infile, outfile) {
   cmd <- paste0("ocrmypdf ",
                 "--deskew ",
+                "-j 2 ",
                 "--rotate-pages --rotate-pages-threshold 10 ",
                 "--oversample 500 ",
                 "--skip-text ",
@@ -94,6 +95,18 @@ wrap_ocrmypdf <- function(infile, outfile) {
                 outfile)
   if(!file.exists(outfile)) {
     message(sprintf("\n\tProcessing %s; writing to %s...\n", infile, outfile))
+    res <- try(pdftools::pdf_text(infile), silent = TRUE)
+    if(class(res) != "try-error") {
+      nchars <- unlist(lapply(res, nchar))
+      if(mean(nchars, na.rm = TRUE) > 1000) {
+        file.copy(infile, outfile)
+        cur_res <- data_frame(infile = infile,
+                              outfile = outfile,
+                              error = "File copied",
+                              proc_time = Sys.time())
+        return(cur_res)
+      }
+    }
     res <- try(system(command = cmd, intern = FALSE, wait = TRUE), silent = TRUE)
     if(class(res) == "try-error") {
       error <- res
@@ -104,14 +117,15 @@ wrap_ocrmypdf <- function(infile, outfile) {
                           outfile = outfile,
                           error = error,
                           proc_time = Sys.time())
+    return(cur_res)
   } else {
     cur_res <- data_frame(infile = infile,
                           outfile = outfile,
                           error = "File exists",
                           proc_time = Sys.time())
 
+    return(cur_res)
   }
-  return(cur_res)
 }
 
 test <- wrap_ocrmypdf(for_OCR$infile[1], for_OCR$outfile[1])
@@ -121,4 +135,26 @@ new_OCR <- mcmapply(wrap_ocrmypdf, for_OCR$infile, for_OCR$outfile,
                     USE.NAMES = FALSE,
                     mc.cores = 12,
                     mc.preschedule = FALSE)
+OCR_res <- bind_rows(new_OCR)
+OCR_res$error <- ifelse(is.na(OCR_res$error),
+                        "File processed",
+                        OCR_res$error)
 
+OCR_res$OCR_MD5 <- mclapply(OCR_res$outfile,
+                            doc_md5,
+                            mc.cores = NCORE,
+                            mc.preschedule = FALSE)
+OCR_res$OCR_MD5 <- unlist(OCR_res$OCR_MD5)
+
+get_n_pages <- function(f) {
+  txt <- try(pdf_text(f), silent = TRUE)
+  if(class(txt)[1] != "try-error") return(length(txt)) else return(NA)
+}
+
+OCR_res$n_pages <- mclapply(OCR_res$outfile,
+                            get_n_pages,
+                            mc.cores = NCORE,
+                            mc.preschedule = FALSE)
+OCR_res$n_pages <- unlist(OCR_res$n_pages)
+
+save(OCR_res, file = file.path(BASED, paste0("OCR_res_", Sys.Date(), ".rda")))
