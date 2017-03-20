@@ -14,10 +14,14 @@ library(ecosdata)
 library(ecosscraper)
 library(knitr)
 library(parallel)
+library(pdfdown)
 library(purrr)
 
 NCORE <- detectCores() - 1
-BASED <- "/datadrive/data/ECOS"
+BASED <- "/datadrive/data/ECOS_2"
+RDAs <- file.path(BASED, "rda")
+if(!dir.exists(BASED)) dir.create(BASED)
+if(!dir.exists(RDAs)) dir.create(RDAs)
 
 # TECP baseline: table of threatened, endangered, candidate, and proposed spp.
 TECP_init <- get_TECP_baseline()
@@ -99,6 +103,12 @@ petitions_table <- bind_rows(petitions_table)
 save(petitions_table,
      file = file.path(BASED, "rda",
                       paste0("petitions_table_", Sys.Date(), ".rda")))
+
+load(file.path(BASED, "rda", paste0("petitions_table_", Sys.Date(), ".rda")))
+pet_url <- petitions_table$Petition_Doc_URL
+pet_url <- unique(unlist(lapply(pet_docs, strsplit, split = "; ")))
+pet_fils <- basename(pet_url)
+petition_downs <- file.path(BASED, "")
 
 # County occurrence
 co_urls <- filter(ECOS_species_links,
